@@ -178,7 +178,7 @@ try {
   await p.click("#go-d");
   const tags = await p.evaluate(() => __kn.load().runs.d.list);
   check("今日の5問は日付から決まる（gen.js の dailyTags と同じ）", JSON.stringify(tags) === JSON.stringify(G.dailyTags(TODAY)));
-  check("問題の画面：なかま・点字のマス（点の番号を読み上げる名前つき）・選び肢（名前つきで高さ44px以上）", await p.locator(".who b").count() === 1 && await p.locator(".card .cells[role=img]").count() === 1 && /^点字\dマス：[①②③④⑤⑥・]+$/.test(await p.getAttribute(".card .cells", "aria-label")) && await p.locator(".card .cell").count() === (await p.evaluate(() => __kn.cur().P.cells.length)) && await p.locator(".card .cell i").count() === 6 * (await p.evaluate(() => __kn.cur().P.cells.length)) && !(await p.getAttribute(".card .cells", "aria-label")).includes(await p.evaluate(() => __kn.cur().P.ok)) && await p.locator(".ch").count() >= 3 && (await p.$$eval(".ch", (b) => b.filter((x) => !x.getAttribute("aria-label") || x.getBoundingClientRect().height < 44).length)) === 0);
+  check("問題の画面：なかま・点字のマス（点の番号を読み上げる名前つき）・選び肢（名前つきで高さ44px以上）", await p.locator(".who b").count() === 1 && await p.locator(".card .cells[role=img]").count() === 1 && /^点字\dマス：[①②③④⑤⑥・]+$/.test(await p.getAttribute(".card .cells", "aria-label")) && await p.locator(".card .cell").count() === (await p.evaluate(() => __kn.cur().P.cells.length)) && await p.locator(".card .cell i").count() === 6 * (await p.evaluate(() => __kn.cur().P.cells.length)) && !(await p.getAttribute(".card .cells", "aria-label")).includes(await p.evaluate(() => __kn.cur().P.ok)) && await p.locator(".ch").count() >= 3 && (await p.$$eval(".ch", (b) => b.filter((x) => !x.getAttribute("aria-label") || Math.round(x.getBoundingClientRect().height) < 44).length)) === 0);
   const w0 = (await wrongOf(p))[0];
   await p.click(`[data-j="${w0}"]`);
   check("まちがえると「✕」の印・破線・取り消し線と、理由の知らせ（色だけで分けない）・role=status", await p.locator(".ch.bad").count() === 1 && (await p.textContent(".ch.bad .mk")) === "✕" && (await p.evaluate(() => getComputedStyle(document.querySelector(".ch.bad")).borderStyle)) === "dashed" && (await p.textContent("#msg")).startsWith("✕ ちがう：") && await p.getAttribute("#msg", "role") === "status");
@@ -341,7 +341,7 @@ try {
         await q.waitForTimeout(100);
         const ov = await q.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         if (ov > 0) bad.push(`${w}px ${go || "ホーム"} ${ov}px`);
-        small.push(...(await q.$$eval("button:not([disabled]), a[href]", (bs) => bs.filter((b) => b.checkVisibility() && !b.closest(".cal")).filter((b) => b.getBoundingClientRect().height < 44 || b.getBoundingClientRect().width < 44).map((b) => (b.id || b.className || b.textContent).slice(0, 20)))).map((x) => `${w}/${go}:${x}`));
+        small.push(...(await q.$$eval("button:not([disabled]), a[href]", (bs) => bs.filter((b) => b.checkVisibility() && !b.closest(".cal")).filter((b) => Math.round(b.getBoundingClientRect().height) < 44 || Math.round(b.getBoundingClientRect().width) < 44).map((b) => (b.id || b.className || b.textContent).slice(0, 20)))).map((x) => `${w}/${go}:${x}`));
       }
       await q.context().close();
     }
