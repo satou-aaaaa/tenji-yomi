@@ -14,6 +14,7 @@ import { checkSwStall } from "./sw-check.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const results = [];
 const check = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 400) });
+const firstClose = async (q) => { if (await q.locator("#howto[open]").count()) await q.click("#howto-ok"); if (await q.locator("#core-coach").count()) { await q.evaluate(() => Core.coach.leave()); await q.waitForTimeout(100); } }; // はじめての練習の吹き出しをやめてホームへ（sync-template の migrateFirstQa が足した）
 const req = createRequire(import.meta.url);
 const G = req(path.join(root, "gen.js"));
 
@@ -138,7 +139,7 @@ async function newPage(w = 390, ctx) {
   await p.goto(url); await p.waitForTimeout(200);
   return p;
 }
-const closeHow = async (p) => { if (await p.locator("#howto[open]").count()) await p.click("#howto-ok"); };
+const closeHow = async (p) => { await firstClose(p); };
 const ansOf = (p) => p.evaluate(() => __kn.cur().P.ans);
 const wrongOf = (p) => p.evaluate(() => { const c = __kn.cur(), g = __kn.goneOf(); return c.P.choices.map((_, j) => j).filter((j) => j !== c.P.ans && !c.wrong.includes(j) && !g.includes(j)); });
 const mem = (p) => p.evaluate(() => JSON.parse(localStorage.getItem("tenji-v1") || "{}"));
@@ -150,8 +151,8 @@ async function solve(p, { wrong = 0 } = {}) {
 
 try {
   const p = await newPage();
-  check("はじめて開くと遊び方が出る", await p.locator("#howto[open]").count() === 1);
-  await p.click("#howto-ok");
+  check("はじめて開くと遊び方が出る", await p.locator("#core-coach").count() === 1);
+  await firstClose(p);
   check("「わかった」を押したその場で遊び方を見た記録が残る", (await mem(p)).tut === true);
   {
     // Esc を押した直後に読み直しても出ない（close の知らせは遅れて届くので cancel でも残す。10回）
@@ -391,10 +392,10 @@ try {
     const pw = await browser.newPage({ viewport: { width: 390, height: 844 } });
     pw.on("pageerror", (e) => errors.push(e.message));
     await pw.addInitScript(() => { window.__origSetItem = Storage.prototype.setItem; Storage.prototype.setItem = () => { throw new Error("blocked"); }; });
-    await pw.goto(url); await pw.click("#howto-ok"); await pw.waitForTimeout(2000);
+    await pw.goto(url); await firstClose(pw); await pw.waitForTimeout(2000);
     check("保存できないときは、帯 #savewarn がちょうど1つ出て、2秒たっても残る", (await pw.locator("#savewarn").count()) === 1, await pw.locator("#savewarn").count());
     await pw.evaluate(() => { Storage.prototype.setItem = window.__origSetItem; });
-    await pw.click("#f-how"); await pw.click("#howto-ok");
+    await firstClose(pw).then(() => pw.click("#f-how")); await firstClose(pw);
     check("保存できるようになって次に保存すると、帯 #savewarn が消える", (await pw.locator("#savewarn").count()) === 0);
     await pw.close(); }
 } catch (e) {
@@ -404,7 +405,7 @@ try {
 // 引き継ぎコード（shared-workflows template/qa/transfer-check.mjs）
 try {
   const sample = { "tenji-v1": JSON.stringify({ v: 1, tut: true, days: { "2026-11-07": { m: [0, 1, 0, 0, 2] } }, hdays: {}, adays: {}, dex: { ka: 2, han: 1, word: 1 }, runs: {}, kofi: {}, ach: {}, ebest: 7, qs: 12, recent: [], t: 1 }) };
-  await checkTransfer({ browser, url, game: "tenji-yomi", sample, check, open: async (pg) => { if (await pg.locator("#howto[open]").count()) await pg.click("#howto-ok"); } });
+  await checkTransfer({ browser, url, game: "tenji-yomi", sample, check, open: async (pg) => { await firstClose(pg); } });
 } catch (e) { check("引き継ぎの検査が最後まで動く", false, e.message.split("\n")[0]); }
   { const c = await browser.newContext(); const r = await c.newPage(); const big = []; // 題が h1{flex:1} で縦に伸び（伸びない形と比べて4pxより高ければ失敗）、iPad の縦で大きなすき間が出た（shared-workflows incidents/2026-11-07-title-stretched.md）
     for (const [w, h] of [[820, 1180], [390, 844], [1280, 800]]) { await r.setViewportSize({ width: w, height: h }); await r.goto(url); await r.waitForTimeout(200); await r.keyboard.press("Escape"); await r.waitForTimeout(100);
