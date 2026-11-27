@@ -94,6 +94,8 @@ const cellStr = (cells) => cells.map((c) => c.slice().sort().join(""));
 
 // ---- 2. ファイルの中身 ----
 const html = readFileSync(path.join(root, "index.html"), "utf8"), gen = readFileSync(path.join(root, "gen.js"), "utf8");
+// ひな形の写し（<!-- 名前:begin〜end -->）はゲームの言葉ではないので外し、Core.kofi・Core.KOFI は写す前の形にもどして見る（shared-workflows の sync-template が足した）
+const gameOwn = (t) => t.replace(/<!-- ([a-z0-9-]+):begin[\s\S]*?<!-- \1:end -->/g, "").split("${Core.KOFI}").join("https://ko-fi.com/satouaaaaa").replace(/Core\.kofi\(("(?:[^"\\]|\\.)*"), ("(?:[^"\\]|\\.)*")\)/g, (m, a, b) => "`<p class=\"note kofi\">" + JSON.parse(a) + "、<a href=\"https://ko-fi.com/satouaaaaa\" target=\"_blank\" rel=\"noopener\">Ko-fi でコーヒー1杯の応援</a>をもらえると、" + JSON.parse(b) + "の励みになります（任意・遊ぶのはずっと無料）。</p>`");
 const ext = [...html.matchAll(/(?:src|href)="(https?:[^"]+)"/g)].map((m) => m[1]).filter((u) => !/^https:\/\/fonts\.googleapis\.com(\/|$)|^https:\/\/ko-fi\.com\/satouaaaaa$/.test(u));
 check("外から読むのは文字（Google Fonts）だけ。スクリプト・広告・解析を入れない（出典のリンクは押したときに開くだけ）", ext.length === 0 && ![...html.matchAll(/<script[^>]+src="([^"]+)"/g)].some((m) => /^(https?:)?\/\//.test(m[1])), ext.join(","));
 check("CSP で通信先を自分だけにしている", (html.match(/connect-src([^;"]*)/) || [])[1]?.trim() === "'self'");
@@ -101,7 +103,7 @@ check("Math.random は練習・とことんの種だけ（今日の5問・上級
 check("乱数は sort の比較の中で引かない（ブラウザで引く回数が変わる）", !/\.sort\(\s*\([^)]*\)\s*=>[^\n;]*\b(R|rng|rand|Math\.random)\s*\(/.test(html + gen));
 check("一行の式の途中にコメント // を足さない（行の残りが消える。rosen-hitofude 2026-11-04）", !/;\s*\/\/[^\n]*;\s*\w/.test(gen.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n")));
 check("画面にお笑いの言葉を入れない（本物っぽく）", !/お笑い|ギャグ|ツッコミ|なんでやねん|（うそ）/.test(html + gen));
-check("チケット・回数制限・鍵で開くモードを入れない（好きなだけ遊べる）", !/🎫|チケット|すると開く|🔒/.test(html + gen));
+check("チケット・回数制限・鍵で開くモードを入れない（好きなだけ遊べる）", !/🎫|チケット|すると開く|🔒/.test(gameOwn(html) + gen));
 check("出典：3つの出典へのリンクを、このゲームについてと点字帳に出す", /SRCS/.test(html) && (html.match(/出典：\$\{SRCS\}/g) || []).length >= 2 && /点字学習指導の手引/.test(G.SRC.t));
 check("画面の HTML に ${ が出ない書き方（'…' の中に ${ を書かない）", !/'[^'\n]*\$\{[^'\n]*'/.test(html.split("<script>").pop()));
 check("引き継ぎ：transfer.js をゲームの script より前に、このゲームの記録のキーだけで読む", /<script src="transfer\.js" data-game="tenji-yomi" data-keys="tenji-v1"><\/script>\s*<\/head>/.test(html) && html.indexOf('src="transfer.js"') < html.indexOf('src="gen.js"') && /data-hk/.test(html) && existsSync(path.join(root, "transfer.js")));
